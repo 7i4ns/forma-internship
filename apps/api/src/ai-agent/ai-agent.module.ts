@@ -1,0 +1,30 @@
+import { DiscoveryModule } from '@nestjs/core';
+import { CompanyModule } from '../company/company.module';
+import { UserQueryTool, CompanyQueryTool, DashboardMetricsTool, CompanyAnalysisTool } from './tools/read-tools';
+import { ToolRegistryService } from './tools/tool-registry.service';
+import { ToolPolicyService } from './tools/tool-policy.service';
+import { ToolSettingsService } from './tools/tool-settings.service';
+import { ToolAuditService } from './tools/tool-audit.service';
+import { ToolExecutionController } from './http/tool-execution.controller';
+import { Module } from '@nestjs/common';
+import { UserModule } from '../user/user.module';
+import { ChatController } from './http/chat.controller';
+import { ChatService } from './application/chat.service';
+import { ModelGateway } from './infrastructure/model-gateway';
+import { AiCacheModule } from './infrastructure/ai-cache.module';
+import { AiDatabase } from './infrastructure/ai-database';
+import { AiScopeService } from './application/ai-scope.service';
+import { AiCoreService } from './application/core.service';
+import { AiBusinessToolsService } from './application/business-tools.service';
+import { AiSessionController, AiMemoryController, AiTaskController, AiAuditController } from './http/core.controller';
+import { AiToolsController } from './http/tools.controller';
+import { DashboardModule } from '../dashboard/dashboard.module';
+import { WriteToolsController } from './http/write-tools.controller';
+import { WritePrevalidationService } from './write-tools/write-prevalidation.service';
+import { WriteExecutionGateService } from './write-tools/write-execution-gate.service';
+import { WriteToolRegistryService } from './write-tools/write-tool-registry.service';
+import { UserCreateTool, UserUpdateTool, UserDeleteTool, UserBatchDeleteTool } from './write-tools/user-write-tools';
+import { CompanyCreateTool, CompanyUpdateTool, CompanyDeleteTool } from './write-tools/company-write-tools';
+import { ToolCommandService } from './tools/tool-command.service';
+@Module({imports:[UserModule,AiCacheModule,DashboardModule,CompanyModule,DiscoveryModule],controllers:[ChatController,AiSessionController,AiMemoryController,AiTaskController,AiAuditController,AiToolsController,ToolExecutionController,WriteToolsController],providers:[ChatService,ModelGateway,AiDatabase,AiScopeService,AiCoreService,AiBusinessToolsService,ToolRegistryService,ToolPolicyService,ToolSettingsService,ToolAuditService,ToolCommandService,UserQueryTool,CompanyQueryTool,DashboardMetricsTool,CompanyAnalysisTool,WritePrevalidationService,WriteExecutionGateService,WriteToolRegistryService,UserCreateTool,UserUpdateTool,UserDeleteTool,UserBatchDeleteTool,CompanyCreateTool,CompanyUpdateTool,CompanyDeleteTool]})
+export class AiAgentModule {}

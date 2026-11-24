@@ -1,0 +1,42 @@
+# Dependencies and build output
+node_modules/
+.next/
+dist/
+coverage/
+*.tsbuildinfo
+*.log
+
+# Environment / credentials (only sanitized examples are public)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+.npmrc
+.netrc
+
+# Local data, recordings, archives and generated test sessions
+backups/
+tmp/
+output/
+demos/
+screenshots/
+deliveries/
+apps/api/data/
+apps/web/public/ai-core-review.html
+postman/*.postman_environment.json
+!postman/*.example.postman_environment.json
+
+# Private project references and local development history
+docs/项目背景与会议记录.md
+docs/公司测试数据导入记录.md
+docs/本地环境与开发记录.md
+
+# Editor and machine-specific files
+.DS_Store
+.vscode/
+.idea/
+.codex/
+.agents/

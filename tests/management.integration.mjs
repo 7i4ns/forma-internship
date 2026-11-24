@@ -1,0 +1,85 @@
+import assert from 'node:assert/strict';
+import { randomUUID } from 'node:crypto';
+import { createRequire } from 'node:module';
+import { resolve, join } from 'node:path';
+import { mkdtemp, writeFile, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+const require = createRequire(import.meta.url);
+require('dotenv').config({ path: resolve('apps/api/.env'), quiet: true });
+const { Pool } = require('pg'); const pool = new Pool({connectionString:process.env.DATABASE_URL});
+const base = process.env.TEST_API_URL || 'http://127.0.0.1:3001';
+const key = `qa-${randomUUID()}`; const email = `${key}@example.com`; const password = 'Test-pass123!';
+const temp = await mkdtemp(join(tmpdir(),'forma-csv-')); let cookie = ''; let checks = 0;
+async function request(path, method='GET', body, session=cookie) {
+  const res = await fetch(base+path,{method,headers:{'Content-Type':'application/json',...(session?{Cookie:session}:{})},...(body === undefined?{}:{body:JSON.stringify(body)})});
+  return {status:res.status,data:await res.json(),cookie:res.headers.get('set-cookie')};
+}
+function eq(a,b,label) {assert.deepEqual(a,b,label);checks++;console.log(`PASS ${label}`);}
+async function importCsv(companies,relationships,flags=[]) { return promisify(execFile)(process.execPath,['--import','tsx','src/import-csv.ts',companies,...(relationships?[relationships]:[]),...flags],{cwd:resolve('apps/api'),env:process.env}); }
+try {
+  eq((await request('/users')).status,401,'anonymous users blocked'); eq((await request('/companies')).status,401,'anonymous companies blocked');
+  const actor = await request('/auth/signup','POST',{email,password}); eq(actor.status,201,'create test actor');
+  const login = await request('/auth/login','POST',{email,password});cookie=login.cookie.split(';')[0];const actorId=actor.data.user.id;
+  const makeUser = async (suffix,role) => (await request('/users','POST',{name:`${key} ${suffix}`,email:`${key}-${suffix}@example.com`,password,role,status:'active'}));
+  const u1=await makeUser('one','QA Analyst'),u2=await makeUser('two','QA Manager');eq(u1.status,201,'create user');eq(u2.status,201,'create second role');
+  eq(Object.keys(u1.data.user).includes('password_hash'),false,'no user hash exposed');
+  eq((await request(`/users?search=${key}&roles=QA%20Analyst&roles=QA%20Manager`)).data.total,2,'multi role + name search');
+  eq((await request(`/users?search=${key}&roles=QA%20Analyst`)).data.items[0].id,u1.data.user.id,'single role filter');
+  eq((await request(`/users?search=${key}&limit=1`)).data.items.length,1,'server pagination');
+  eq((await request('/users?limit=-1')).status,400,'invalid pagination rejected');
+  eq((await request(`/users/${u1.data.user.id}`)).status,200,'get user');
+  eq((await request('/users','POST',{name:'',email:'bad',password:'abc',role:'',status:'wrong'})).status,400,'invalid user rejected');
+  eq((await request(`/users/${u1.data.user.id}`,'PATCH',{email})).status,409,'duplicate email edit blocked');
+  eq((await request(`/users/${u1.data.user.id}`,'PATCH',{name:null})).status,400,'null required user field rejected');
+  eq((await request(`/users/${u1.data.user.id}`,'PATCH',{})).status,400,'empty update rejected');
+  eq((await request(`/users/${actorId}`,'PATCH',{status:'inactive'})).status,400,'self deactivation blocked');
+  eq((await request(`/users/${actorId}`,'DELETE')).status,400,'self deletion blocked');
+  const userLogin=await request('/auth/login','POST',{email:u1.data.user.email,password});
+  eq((await request(`/users/${u1.data.user.id}`,'PATCH',{name:`${key} renamed`,status:'inactive'})).status,200,'edit name and deactivate');
+  eq((await request('/auth/me','GET',undefined,userLogin.cookie.split(';')[0])).status,401,'existing inactive session revoked');
+  eq((await request('/auth/login','POST',{email:u1.data.user.email,password})).data.code,'ACCOUNT_INACTIVE','inactive login blocked');
+  eq((await request('/users/bulk-delete','POST',{ids:[u1.data.user.id,randomUUID()]})).status,400,'stale bulk deletion fails atomically');
+  eq((await request(`/users/${u1.data.user.id}`)).status,200,'valid user preserved after failed bulk');
+  eq((await request('/users/bulk-delete','POST',{ids:[u1.data.user.id,u2.data.user.id]})).data.deleted,2,'bulk delete two users');
+  eq((await request(`/users/${u1.data.user.id}`)).status,404,'deleted user not found');
+  const body={name:`${key} 公司`,level:'QA Level 1',country:'中国',city:'杭州',founded_year:2008,supplying_since:'2020-02-29',annual_revenue:120000,employees:10};
+  const c1=await request('/companies','POST',body);eq(c1.status,201,'create company');const cid=c1.data.company.id;
+  eq(c1.data.company.efficiency,12000,'computed revenue per employee');eq(c1.data.company.supplying_since,'2020-02-29','date has no timezone shift');
+  const c2=await request('/companies','POST',{...body,name:`${key} 另一家公司`,level:'QA Level 2',employees:0});eq(c2.data.company.efficiency,null,'zero employees gives no ratio');
+  eq((await request(`/companies?search=${key}&levels=QA%20Level%201&levels=QA%20Level%202`)).data.total,2,'multi level and company search');
+  eq((await request(`/companies?search=${key}&levels=QA%20Level%202`)).data.items[0].id,c2.data.company.id,'single company level filter');
+  eq((await request('/companies?search=%25')).data.items.some(c=>c.id===cid),false,'search wildcard treated literally');
+  eq((await request('/companies','POST',{...body,employees:-1})).status,400,'negative employees rejected');
+  eq((await request('/companies','POST',{...body,supplying_since:'2025-02-30'})).status,400,'impossible date rejected');
+  eq((await request(`/companies/${cid}`,'PATCH',{name:null})).status,400,'null company name rejected');
+  eq((await request(`/companies/${cid}`,'PATCH',{annual_revenue:0,employees:1})).data.company.efficiency,0,'zero revenue valid');
+  eq((await request(`/companies/${cid}`,'PATCH',{employees:null})).data.company.efficiency,null,'nullable metrics clearable');
+  eq((await request('/companies/not-a-uuid')).status,400,'invalid UUID rejected');
+  await pool.query('INSERT INTO relationships(supplier_id,customer_id) VALUES($1,$2)',[cid,c2.data.company.id]);
+  eq((await request(`/companies/${cid}`,'DELETE')).status,409,'related company protected from deletion');
+  await pool.query('DELETE FROM relationships WHERE supplier_id=$1',[cid]);
+  eq((await request(`/companies/${cid}`,'DELETE')).status,200,'delete unlinked company');
+  eq((await request(`/companies/${cid}`)).status,404,'deleted company not found');
+  const cp=join(temp,'companies.csv'),rp=join(temp,'relationships.csv');
+  const header='external_id,name,level,country,city,founded_year,supplying_since,annual_revenue,employees\n';
+  await writeFile(cp,header+`${key}-a,"测试,公司甲",Tier 1,中国,上海,2010,2021-01-01,100000,20\n${key}-b,测试公司乙,Tier 2,澳大利亚,悉尼,2011,,200000,0\n`);
+  await writeFile(rp,`supplier_external_id,customer_external_id,relationship_type\n${key}-a,${key}-b,supplier_of\n`);
+  await importCsv(cp,rp,['--dry-run']);
+  eq((await pool.query('SELECT count(*)::int AS n FROM companies WHERE external_id=$1',[`${key}-a`])).rows[0].n,0,'CSV dry run leaves no rows');
+  await importCsv(cp,rp);await importCsv(cp,rp);
+  eq((await pool.query('SELECT count(*)::int AS n FROM companies WHERE external_id=ANY($1::text[])',[[`${key}-a`,`${key}-b`]])).rows[0].n,2,'CSV repeated import idempotent');
+  eq((await pool.query('SELECT name FROM companies WHERE external_id=$1',[`${key}-a`])).rows[0].name,'测试,公司甲','CSV quoted comma and Chinese handled');
+  eq((await pool.query('SELECT count(*)::int AS n FROM relationships r JOIN companies c ON c.id=r.supplier_id WHERE c.external_id=$1',[`${key}-a`])).rows[0].n,1,'relationship imported once');
+  await writeFile(cp,header+`${key}-a,不应写入,Tier 1,中国,,,,100,1\n`);
+  await writeFile(rp,`supplier_external_id,customer_external_id\n${key}-a,${key}-missing\n`);
+  await assert.rejects(importCsv(cp,rp));
+  eq((await pool.query('SELECT name FROM companies WHERE external_id=$1',[`${key}-a`])).rows[0].name,'测试,公司甲','invalid relationship rolls back company update');
+  console.log(`Completed ${checks} management assertions plus CSV failure check.`);
+} finally {
+  await pool.query('DELETE FROM relationships WHERE supplier_id IN (SELECT id FROM companies WHERE external_id LIKE $1 OR name LIKE $1) OR customer_id IN (SELECT id FROM companies WHERE external_id LIKE $1 OR name LIKE $1)',[key+'%']);
+  await pool.query('DELETE FROM companies WHERE external_id LIKE $1 OR name LIKE $1',[key+'%']);
+  await pool.query('DELETE FROM users WHERE email LIKE $1',[key+'%']);
+  await pool.end();await rm(temp,{recursive:true,force:true});
+}

@@ -1,0 +1,44 @@
+{
+  "info": {
+    "name": "\u5b9e\u4e60\u73af\u5883\u9a8c\u6536",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "\u6570\u636e\u5e93\u548c Redis",
+      "request": {
+        "method": "GET",
+        "url": "http://127.0.0.1:3001/health"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "LangGraph",
+      "request": {
+        "method": "GET",
+        "url": "http://127.0.0.1:3001/agent/smoke"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

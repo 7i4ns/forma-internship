@@ -1,0 +1,158 @@
+{
+  "info": {
+    "name": "Dashboard 公司条形图与组合筛选",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://127.0.0.1:3001"
+    }
+  ],
+  "item": [
+    {
+      "name": "登录本地演示账号",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/auth/login",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"email\": \"demo-forma@example.com\", \"password\": \"Internship2026!\"}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"登录成功\", () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "按等级统计（不限）",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/dashboard/getCompaniesByFilter",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"dimension\": \"level\",\n  \"filter\": {}\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"查询成功\", () => pm.response.to.have.status(200));",
+              "const d = pm.response.json();",
+              "pm.test(\"分组之和等于总数\", () => pm.expect(d.groups.reduce((n,g) => n+g.count,0)).to.eql(d.total));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "六种过滤器组合",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/dashboard/getCompaniesByFilter",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"dimension\": \"country\",\n  \"filter\": {\n    \"level\": [\n      2,\n      3\n    ],\n    \"country\": [\n      \"China\",\n      \"Japan\"\n    ],\n    \"city\": [],\n    \"founded_year\": {\n      \"start\": 1950,\n      \"end\": 2000\n    },\n    \"annual_revenue\": {\n      \"min\": \"1000.00\",\n      \"max\": \"500000.00\"\n    },\n    \"employees\": {\n      \"min\": 100,\n      \"max\": 1000\n    }\n  }\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"组合查询成功\", () => pm.response.to.have.status(200));",
+              "const d = pm.response.json();",
+              "pm.test(\"国家符合过滤\", () => d.groups.forEach(g => pm.expect([\"China\",\"Japan\"]).to.include(g.value)));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "按城市统计",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/dashboard/getCompaniesByFilter",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"dimension\": \"city\",\n  \"filter\": {}\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"城市维度\", () => {pm.response.to.have.status(200); pm.expect(pm.response.json().dimension).to.eql(\"city\");});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "拒绝反向范围",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/dashboard/getCompaniesByFilter",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"dimension\": \"level\",\n  \"filter\": {\n    \"employees\": {\n      \"min\": 100,\n      \"max\": 10\n    }\n  }\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"范围无效\", () => pm.response.to.have.status(400));"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

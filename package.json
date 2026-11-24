@@ -1,0 +1,31 @@
+{
+  "name": "internship-starter",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:web": "npm run dev -w apps/web",
+    "dev:api": "npm run dev -w apps/api",
+    "build": "npm run build --workspaces --if-present",
+    "check": "npm run check --workspaces --if-present",
+    "test:auth": "node tests/auth.integration.mjs",
+    "test:management": "node tests/management.integration.mjs",
+    "test:dashboard": "node --import tsx tests/dashboard.integration.mjs",
+    "test:hierarchy-import": "node tests/hierarchy-import.integration.mjs",
+    "test:company-bars": "node --import tsx tests/company-bars.integration.mjs",
+    "api:collection": "node scripts/api-delivery/generate-collection.mjs",
+    "test:api-delivery": "node scripts/api-delivery/run.mjs",
+    "api:prepare": "node scripts/api-delivery/run.mjs --prepare",
+    "api:cleanup": "node scripts/api-delivery/cleanup.mjs",
+    "test:ai-agent": "TSX_TSCONFIG_PATH=apps/api/tsconfig.json node --import tsx tests/ai-agent.integration.mjs",
+    "test:ai-core": "TSX_TSCONFIG_PATH=apps/api/tsconfig.json node --import tsx tests/ai-core.integration.mjs",
+    "test:ai-tools": "TSX_TSCONFIG_PATH=apps/api/tsconfig.json node --import tsx tests/ai-tools.integration.mjs",
+    "test:ai-week3": "TSX_TSCONFIG_PATH=apps/api/tsconfig.json node --import tsx tests/ai-week3.integration.mjs"
+  },
+  "devDependencies": {
+    "@apidevtools/swagger-parser": "^13.1.0",
+    "newman": "^6.2.3"
+  }
+}

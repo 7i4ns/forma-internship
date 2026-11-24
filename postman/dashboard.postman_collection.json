@@ -1,0 +1,72 @@
+{
+  "info": {
+    "name": "Dashboard 动态公司看板",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://127.0.0.1:3001"
+    },
+    {
+      "key": "email",
+      "value": "demo-forma@example.com"
+    },
+    {
+      "key": "password",
+      "value": "Internship2026!"
+    }
+  ],
+  "item": [
+    {
+      "name": "01 本机演示账号登录",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/auth/login",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"email\":\"{{email}}\",\"password\":\"{{password}}\"}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"登录成功\", () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 获取并验证动态看板",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/dashboard"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "const b = pm.response.json();",
+              "pm.test(\"等级分组数量合计等于公司总数\", () => pm.expect(b.levels.reduce((s,x) => s+x.count,0)).to.eql(b.summary.companyCount));",
+              "pm.test(\"累计数量单调且包含当年新增\", () => { let total=0; b.growth.forEach(x => { total += x.added; pm.expect(x.cumulative).to.eql(total); }); });",
+              "pm.test(\"金额以字符串返回\", () => pm.expect(b.summary.totalRevenue).to.be.a(\"string\"));"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

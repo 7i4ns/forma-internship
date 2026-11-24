@@ -1,0 +1,43 @@
+{
+  "name": "@internship/api",
+  "private": true,
+  "scripts": {
+    "dev": "tsx watch src/main.ts",
+    "build": "tsc",
+    "check": "tsc --noEmit",
+    "start": "node dist/main.js",
+    "model:smoke": "tsx src/model-smoke.ts",
+    "db:migrate": "node --import tsx src/migrate.ts",
+    "db:import": "node --import tsx src/import-csv.ts"
+  },
+  "dependencies": {
+    "@internship/ai-contracts": "0.1.0",
+    "@langchain/core": "^1.0.0",
+    "@langchain/langgraph": "^1.0.0",
+    "@langchain/langgraph-checkpoint": "^1.2.1",
+    "@langchain/ollama": "^1.0.0",
+    "@langchain/openai": "^1.0.0",
+    "@nestjs/common": "^11.0.0",
+    "@nestjs/core": "^11.0.0",
+    "@nestjs/jwt": "^11.0.0",
+    "@nestjs/platform-express": "^11.0.0",
+    "@nestjs/swagger": "^11.0.0",
+    "class-transformer": "^0.5.0",
+    "class-validator": "^0.14.0",
+    "csv-parse": "^7.0.3",
+    "dotenv": "^17.0.0",
+    "multer": "^2.4.0",
+    "pg": "^8.0.0",
+    "redis": "^5.0.0",
+    "reflect-metadata": "^0.2.0",
+    "rxjs": "^7.0.0",
+    "typeorm": "^0.3.31"
+  },
+  "devDependencies": {
+    "@types/multer": "^2.3.0",
+    "@types/node": "^22.0.0",
+    "@types/pg": "^8.0.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.0.0"
+  }
+}
