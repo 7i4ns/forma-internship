@@ -22,7 +22,8 @@
     "test:ai-agent": "TSX_TSCONFIG_PATH=apps/api/tsconfig.json node --import tsx tests/ai-agent.integration.mjs",
     "test:ai-core": "TSX_TSCONFIG_PATH=apps/api/tsconfig.json node --import tsx tests/ai-core.integration.mjs",
     "test:ai-tools": "TSX_TSCONFIG_PATH=apps/api/tsconfig.json node --import tsx tests/ai-tools.integration.mjs",
-    "test:ai-week3": "TSX_TSCONFIG_PATH=apps/api/tsconfig.json node --import tsx tests/ai-week3.integration.mjs"
+    "test:ai-week3": "TSX_TSCONFIG_PATH=apps/api/tsconfig.json node --import tsx tests/ai-week3.integration.mjs",
+    "test:ai-write-approval": "TSX_TSCONFIG_PATH=apps/api/tsconfig.json node --import tsx tests/ai-write-approval.integration.mjs"
   },
   "devDependencies": {
     "@apidevtools/swagger-parser": "^13.1.0",

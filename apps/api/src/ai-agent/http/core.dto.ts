@@ -29,7 +29,7 @@ export class AiCreateTaskDto {
  @ApiPropertyOptional({type:'object',additionalProperties:true}) @optional() @IsObject() input?:Record<string,unknown>;
 }
 export class AiUpdateTaskDto extends PartialType(AiCreateTaskDto,{skipNullProperties:false}) {
- @ApiPropertyOptional({type:String,enum:['queued','running','completed','failed','cancelled']}) @optional() @IsIn(['queued','running','completed','failed','cancelled']) status?:string;
+ @ApiPropertyOptional({type:String,enum:['queued','pending_approval','running','completed','failed','cancelled']}) @optional() @IsIn(['queued','pending_approval','running','completed','failed','cancelled']) status?:string;
  @ApiPropertyOptional({type:Number,minimum:0,maximum:100}) @optional() @IsInt() @Min(0) @Max(100) progress?:number;
  @ApiPropertyOptional({type:'object',additionalProperties:true}) @optional() @IsObject() output?:Record<string,unknown>;
 }

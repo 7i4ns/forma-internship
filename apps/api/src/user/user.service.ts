@@ -18,6 +18,9 @@ export class UserService implements OnModuleDestroy {
   async validateAgentUpdate(id:string,body:UpdateUserDto,actor:string){if(!this.management)throw new Error('User management service unavailable');return this.management.validateUpdate(id,body,actor);}
   async validateAgentDelete(ids:string[],actor:string){if(!this.management)throw new Error('User management service unavailable');return this.management.validateRemove(ids,actor);}
   async getAgentUser(id:string){if(!this.management)throw new Error('User management service unavailable');return this.management.get(id);}
+  async createAgentUser(body:CreateUserDto){if(!this.management)throw new Error('User management service unavailable');return this.management.create(body);}
+  async updateAgentUser(id:string,body:UpdateUserDto,actor:string){if(!this.management)throw new Error('User management service unavailable');return this.management.update(id,body,actor);}
+  async removeAgentUsers(ids:string[],actor:string){if(!this.management)throw new Error('User management service unavailable');return this.management.remove(ids,actor);}
 
   private readonly pool = new Pool({ connectionString: process.env.DATABASE_URL, connectionTimeoutMillis: 3000 });
   async onModuleDestroy() { await this.pool.end(); }

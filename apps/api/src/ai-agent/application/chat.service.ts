@@ -4,7 +4,7 @@ import { BadRequestException, ConflictException, Inject, Injectable, Optional, N
 import { Pool, type PoolClient } from 'pg';
 import { extname } from 'node:path';
 import { randomUUID, createHash } from 'node:crypto';
-import type { ChatMessage, ChatSnapshot, FileAttachment, ModelProvider, SendMessageInput, ToolExecuteInput, ToolResult } from '@internship/ai-contracts';
+import type { ChatMessage, ChatSnapshot, FileAttachment, ModelProvider, SendMessageInput, ToolExecuteInput, ToolResult, WriteApprovalRequest } from '@internship/ai-contracts';
 import { AIChatSessionEntity } from '../domain/ai-chat-session.entity';
 import { defaultProvider, ModelError, ModelGateway, modelTimeout, type ModelTurn } from '../infrastructure/model-gateway';
 type MessageRow={id:string;role:ChatMessage['role'];type:ChatMessage['type'];content:ChatMessage['content'];status:ChatMessage['status'];source:ChatMessage['source'];attachments:FileAttachment[];request_id:string|null;error_code:string|null;created_at:Date;reply_to:string|null;seq:string};
@@ -94,6 +94,22 @@ export class ChatService implements OnModuleDestroy {
    await client.query("UPDATE ai_chat_session SET state='idle',active_message_id=NULL,generation_started_at=NULL,updated_at=now() WHERE id=$1 AND active_message_id=$2",[id,assistantId]);await client.query('COMMIT');
   }catch(e){await client.query('ROLLBACK');throw e;}finally{client.release();}
   await this.cache?.clearSession(this.scopes.forUser(user),id);return this.get(user,id);
+ }
+ async requestExists(user:string,sessionId:string,requestId:string){await this.owned(this.pool,sessionId,user);return !!(await this.pool.query('SELECT 1 FROM ai_chat_messages WHERE session_id=$1 AND request_id=$2',[sessionId,requestId])).rowCount;}
+ async appendWriteApproval(user:string,sessionId:string,requestId:string,command:string,approval:WriteApprovalRequest){
+  const client=await this.pool.connect();
+  try{await client.query('BEGIN');const session=await this.owned(client,sessionId,user,true);this.open(session);
+   if((await client.query('SELECT 1 FROM ai_chat_messages WHERE session_id=$1 AND request_id=$2',[sessionId,requestId])).rowCount){await client.query('COMMIT');return this.get(user,sessionId);}
+   if(session.state!=='idle')throw new ConflictException({code:'CHAT_BUSY',message:'会话正在处理上一条消息，请稍候'});
+   if((await client.query('SELECT count(*)::int n FROM ai_chat_messages WHERE session_id=$1',[sessionId])).rows[0].n+2>100)throw new BadRequestException({code:'CHAT_LIMIT',message:'会话达到消息上限，请新建对话'});
+   const uid=randomUUID(),messageId=randomUUID(),markdown=`写入请求：**${approval.tool}**\n\n\`\`\`json\n${JSON.stringify(JSON.parse(command.replace(/^\/write\s+\S+\s+/s,'')),null,2)}\n\`\`\``;
+   const content={title:approval.preview.title,description:approval.preview.summary,decision:'pending',demoOnly:false,approvalId:approval.approvalId,taskId:approval.taskId,tool:approval.tool,approvalStatus:'pending',preview:approval.preview};
+   await client.query("INSERT INTO ai_chat_messages(id,session_id,role,type,content,status,source,request_id) VALUES($1,$2,'user','text',$3::jsonb,'complete','user',$4)",[uid,sessionId,JSON.stringify({markdown}),requestId]);
+   await client.query("INSERT INTO ai_chat_messages(id,session_id,role,type,content,status,source,reply_to) VALUES($1,$2,'assistant','confirmation',$3::jsonb,'complete','tool',$4)",[messageId,sessionId,JSON.stringify(content),uid]);
+   await client.query("UPDATE ai_chat_session SET updated_at=now(),title=CASE WHEN title='新对话' THEN $2 ELSE title END WHERE id=$1",[sessionId,`待审批 · ${approval.preview.title}`]);
+   await client.query('COMMIT');
+  }catch(error){await client.query('ROLLBACK');throw error;}finally{client.release();}
+  await this.cache?.clearSession(this.scopes.forUser(user),sessionId);return this.get(user,sessionId);
  }
  async retry(user:string,id:string,messageId:string){
   await this.recover(id,user);const c=await this.pool.connect();

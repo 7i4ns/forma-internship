@@ -11,6 +11,7 @@ export abstract class BaseWriteTool<P extends object=object> {
  abstract readonly parameterType:new()=>P;
  abstract validate(context:Readonly<ToolContext>,input:unknown):Promise<P>;
  abstract getPreview(context:Readonly<ToolContext>,parameters:P):Promise<WriteToolPreviewDetails>;
+ abstract getSnapshot(context:Readonly<ToolContext>,parameters:P):Promise<Record<string,unknown>>;
  abstract execute(context:Readonly<ToolContext>,parameters:P):Promise<unknown>;
  abstract rollback(context:Readonly<ToolContext>,parameters:P):Promise<WriteRollbackResult>;
 }

@@ -23,6 +23,7 @@ tmp/
 output/
 demos/
 screenshots/
+recordings/
 deliveries/
 apps/api/data/
 apps/web/public/ai-core-review.html
